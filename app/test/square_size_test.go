@@ -10,6 +10,9 @@ import (
 	"github.com/celestiaorg/celestia-app/app/encoding"
 	"github.com/celestiaorg/celestia-app/pkg/appconsts"
 	"github.com/celestiaorg/celestia-app/test/txsim"
+	"github.com/celestiaorg/celestia-app/test/util/blobfactory"
+	"github.com/celestiaorg/celestia-app/test/util/genesis"
+	"github.com/celestiaorg/celestia-app/test/util/testfactory"
 	"github.com/celestiaorg/celestia-app/test/util/testnode"
 	blobtypes "github.com/celestiaorg/celestia-app/x/blob/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -44,7 +47,7 @@ func (s *SquareSizeIntegrationTest) SetupSuite() {
 	t.Log("setting up square size integration test")
 	s.ecfg = encoding.MakeConfig(app.ModuleEncodingRegisters...)
 	cfg := testnode.DefaultConfig().
-		WithGenesisOptions(testnode.ImmediateProposals(s.ecfg.Codec))
+		WithModifiers(genesis.ImmediateProposals(s.ecfg.Codec))
 
 	cctx, rpcAddr, grpcAddr := testnode.NewNetwork(t, cfg)
 

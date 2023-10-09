@@ -100,6 +100,13 @@ func TestTxSimulator(t *testing.T) {
 
 			keyring, rpcAddr, grpcAddr := Setup(t)
 
+			opts := txsim.DefaultOptions().
+				SuppressLogs().
+				WithPollTime(time.Millisecond * 100)
+			if tc.useFeegrant {
+				opts.UseFeeGrant()
+			}
+
 			err := txsim.Run(
 				ctx,
 				[]string{rpcAddr},
@@ -137,7 +144,7 @@ func TestTxSimulator(t *testing.T) {
 func Setup(t testing.TB) (keyring.Keyring, string, string) {
 	t.Helper()
 
-	cfg := testnode.DefaultConfig()
+	cfg := testnode.DefaultConfig().WithTimeoutCommit(300 * time.Millisecond).WithFundedAccounts("txsim-master")
 
 	cctx, rpcAddr, grpcAddr := testnode.NewNetwork(t, cfg)
 

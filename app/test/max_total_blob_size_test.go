@@ -53,7 +53,7 @@ func (s *MaxTotalBlobSizeSuite) SetupSuite() {
 	cParams.Block.MaxBytes = 10 * mebibyte
 
 	cfg := testnode.DefaultConfig().
-		WithAccounts(s.accounts).
+		WithFundedAccounts(s.accounts...).
 		WithTendermintConfig(tmConfig).
 		WithConsensusParams(cParams)
 
