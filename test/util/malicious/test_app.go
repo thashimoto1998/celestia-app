@@ -38,7 +38,6 @@ func OutOfOrderNamespaceConfig(startHeight int64) *testnode.Config {
 func TestNodeConfig(behavior BehaviorConfig) *testnode.Config {
 	cfg := testnode.DefaultConfig().
 		WithAppCreator(NewAppServer)
-
 	cfg.AppOptions.Set(BehaviorConfigKey, behavior)
 	return cfg
 }

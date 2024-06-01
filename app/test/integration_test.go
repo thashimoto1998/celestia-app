@@ -26,7 +26,6 @@ import (
 	"github.com/celestiaorg/celestia-app/pkg/square"
 	"github.com/celestiaorg/celestia-app/x/blob"
 	blobtypes "github.com/celestiaorg/celestia-app/x/blob/types"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -250,9 +249,9 @@ func (s *IntegrationTestSuite) TestSubmitPayForBlob() {
 		{
 			"medium random with timeout height",
 			mustNewBlob(ns1, tmrand.Bytes(100000), appconsts.ShareVersionZero),
-			[]user.TxOption{
-				user.SetTimeoutHeight(10000),
-				user.SetGasLimit(1_000_000_000),
+			[]blobtypes.TxBuilderOption{
+				blobtypes.SetTimeoutHeight(1000),
+				blobtypes.SetGasLimit(1_000_000_000),
 			},
 		},
 	}

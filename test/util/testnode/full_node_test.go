@@ -11,6 +11,7 @@ import (
 	"github.com/celestiaorg/celestia-app/pkg/appconsts"
 	appns "github.com/celestiaorg/celestia-app/pkg/namespace"
 	"github.com/celestiaorg/celestia-app/test/util/genesis"
+	"github.com/celestiaorg/celestia-app/test/util/testfactory"
 	blobtypes "github.com/celestiaorg/celestia-app/x/blob/types"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/stretchr/testify/suite"

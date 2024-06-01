@@ -100,13 +100,6 @@ func TestTxSimulator(t *testing.T) {
 
 			keyring, rpcAddr, grpcAddr := Setup(t)
 
-			opts := txsim.DefaultOptions().
-				SuppressLogs().
-				WithPollTime(time.Millisecond * 100)
-			if tc.useFeegrant {
-				opts.UseFeeGrant()
-			}
-
 			err := txsim.Run(
 				ctx,
 				[]string{rpcAddr},

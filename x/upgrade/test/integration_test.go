@@ -7,7 +7,6 @@ import (
 
 	"github.com/celestiaorg/celestia-app/app"
 	"github.com/celestiaorg/celestia-app/app/encoding"
-	"github.com/celestiaorg/celestia-app/test/util/blobfactory"
 	"github.com/celestiaorg/celestia-app/test/util/genesis"
 	"github.com/celestiaorg/celestia-app/test/util/testnode"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"

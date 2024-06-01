@@ -6,13 +6,13 @@ import (
 
 	"github.com/celestiaorg/celestia-app/cmd/celestia-appd/cmd"
 	"github.com/celestiaorg/celestia-app/pkg/appconsts"
+	v1 "github.com/celestiaorg/celestia-app/pkg/appconsts/v1"
 	"github.com/celestiaorg/celestia-app/test/util/genesis"
-	pruningtypes "github.com/cosmos/cosmos-sdk/pruning/types"
 	"github.com/cosmos/cosmos-sdk/server"
 	srvconfig "github.com/cosmos/cosmos-sdk/server/config"
 	srvtypes "github.com/cosmos/cosmos-sdk/server/types"
 	tmconfig "github.com/tendermint/tendermint/config"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
+	// tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -124,15 +124,13 @@ func DefaultConfig() *Config {
 	return cfg.
 		WithGenesis(
 			genesis.NewDefaultGenesis().
-				WithChainID(tmrand.Str(6)).
-				WithGenesisTime(time.Now()).
-				WithConsensusParams(DefaultParams()).
-				WithModifiers().
-				WithValidators(genesis.NewDefaultValidator(DefaultValidatorAccountName)),
+				WithValidators(genesis.NewDefaultValidator(DefaultValidatorAccountName)).
+				WithConsensusParams(DefaultConsensusParams()),
 		).
 		WithTendermintConfig(DefaultTendermintConfig()).
-		WithAppConfig(DefaultAppConfig()).
 		WithAppOptions(DefaultAppOptions()).
+		WithAppConfig(DefaultAppConfig()).
+		WithConsensusParams(DefaultConsensusParams()).
 		WithAppCreator(cmd.NewAppServer).
 		WithSupressLogs(true)
 }

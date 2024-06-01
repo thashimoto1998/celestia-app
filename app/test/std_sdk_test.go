@@ -106,7 +106,7 @@ func (s *StandardSDKIntegrationTestSuite) TestStandardSDK() {
 		{
 			name: "delegate 1 TIA",
 			msgFunc: func() (msgs []sdk.Msg, signer string) {
-				valopAddr := sdk.ValAddress(testfactory.GetAddress(s.cctx.Keyring, testnode.DefaultValidatorAccountName))
+				valopAddr := sdk.ValAddress(getAddress("validator", s.cctx.Keyring))
 				account1 := s.unusedAccount()
 				account1Addr := getAddress(account1, s.cctx.Keyring)
 				msg := stakingtypes.NewMsgDelegate(account1Addr, valopAddr, sdk.NewCoin(app.BondDenom, sdk.NewInt(1000000)))
@@ -117,7 +117,7 @@ func (s *StandardSDKIntegrationTestSuite) TestStandardSDK() {
 		{
 			name: "undelegate 1 TIA",
 			msgFunc: func() (msgs []sdk.Msg, signer string) {
-				valAccAddr := testfactory.GetAddress(s.cctx.Keyring, testnode.DefaultValidatorAccountName)
+				valAccAddr := getAddress("validator", s.cctx.Keyring)
 				valopAddr := sdk.ValAddress(valAccAddr)
 				msg := stakingtypes.NewMsgUndelegate(valAccAddr, valopAddr, sdk.NewCoin(app.BondDenom, sdk.NewInt(1000000)))
 				return []sdk.Msg{msg}, testnode.DefaultValidatorAccountName

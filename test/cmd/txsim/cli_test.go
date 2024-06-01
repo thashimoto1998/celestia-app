@@ -6,11 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/celestiaorg/celestia-app/app"
+	"github.com/celestiaorg/celestia-app/app/encoding"
 	"github.com/celestiaorg/celestia-app/pkg/appconsts"
 	"github.com/celestiaorg/celestia-app/test/util/genesis"
 	"github.com/celestiaorg/celestia-app/test/util/testfactory"
 	"github.com/celestiaorg/celestia-app/test/util/testnode"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,15 +60,22 @@ func setup(t testing.TB) (keyring.Keyring, string, string) {
 	}
 	t.Helper()
 
+	cdc := encoding.MakeConfig(app.ModuleEncodingRegisters...).Codec
+
 	// set the consensus params to allow for the max square size
 	cparams := testnode.DefaultConsensusParams()
 	cparams.Block.MaxBytes = int64(appconsts.DefaultSquareSizeUpperBound*appconsts.DefaultSquareSizeUpperBound) * appconsts.ContinuationSparseShareContentSize
+
+	bz, err := sdk.GetFromBech32(testfactory.TestAccAddr, "celestia")
+	if err != nil {
+		panic(err)
+	}
 
 	cfg := testnode.DefaultConfig().
 		WithConsensusParams(cparams).
 		WithFundedAccounts(testfactory.TestAccName).
 		WithModifiers(
-			genesis.FundAccounts(cdc, []sdk.AccAddress{testnode.TestAddress()}, sdk.NewCoin(app.BondDenom, sdk.NewIntFromUint64(1e15))),
+			genesis.FundAccounts(cdc, []sdk.AccAddress{sdk.AccAddress(bz)}, sdk.NewCoin(app.BondDenom, sdk.NewIntFromUint64(1e15))),
 		)
 
 	cctx, rpcAddr, grpcAddr := testnode.NewNetwork(t, cfg)
