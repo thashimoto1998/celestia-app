@@ -19,6 +19,7 @@ import (
 
 const (
 	DefaultValidatorAccountName = "validator"
+	DefaultInitialBalance       = genesis.DefaultInitialBalance
 )
 
 // Config is the configuration of a test node.
@@ -87,8 +88,8 @@ func (c *Config) WithTimeoutCommit(d time.Duration) *Config {
 
 // WithFundedAccounts sets the genesis accounts and returns the Config.
 func (c *Config) WithFundedAccounts(accounts ...string) *Config {
-	c.Genesis = c.Genesis.WithAccounts(
-		genesis.NewAccounts(999999999999999999, accounts...)...,
+	c.Genesis = c.Genesis.WithKeyringAccounts(
+		genesis.NewKeyringAccounts(DefaultInitialBalance, accounts...)...,
 	)
 	return c
 }

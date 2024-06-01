@@ -27,6 +27,11 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/celestiaorg/celestia-app/test/util/genesis"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+
 
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
@@ -38,6 +43,124 @@ const (
 // Get flags every time the simulator is run
 func init() {
 	simapp.GetSimulatorFlags()
+}
+
+type EmptyAppOptions struct{}
+
+// Get implements AppOptions
+func (ao EmptyAppOptions) Get(_ string) interface{} {
+	return nil
+}
+
+
+func NewTestApp() *app.App {
+	// EmptyAppOptions is a stub implementing AppOptions
+	emptyOpts := EmptyAppOptions{}
+	// var anteOpt = func(bapp *baseapp.BaseApp) { bapp.SetAnteHandler(nil) }
+	db := dbm.NewMemDB()
+
+	encCfg := encoding.MakeConfig(app.ModuleEncodingRegisters...)
+
+
+	return app.New(
+		log.NewNopLogger(),
+		db,
+		nil,
+		true,
+		nil,
+		"",
+		cast.ToUint(emptyOpts.Get(server.FlagInvCheckPeriod)),
+		encCfg,
+		emptyOpts,
+	)
+}
+
+func ApplyGenesisState(testApp *app.App, pubKeys []cryptotypes.PubKey, balance int64, cparams *tmproto.ConsensusParams) (keyring.Keyring, []genesis.Account, error) {
+	// create genesis
+	gen := genesis.NewDefaultGenesis().WithChainID("test").WithConsensusParams(cparams).WithGenesisTime(time.Date(2023, 1, 1, 1, 1, 1, 1, time.UTC).UTC())
+
+	for _, pk := range pubKeys {
+		err := gen.AddAccount(genesis.Account{
+			PubKey:  pk,
+			Balance: balance,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// hardcoding keys to make validator creation deterministic
+	consensusKey := ed25519.PrivKey(ed25519.GenPrivKeyFromSecret([]byte("12345678901234567890123456389012")))
+	networkKey := ed25519.PrivKey(ed25519.GenPrivKeyFromSecret([]byte("12345678901234567890123456786012")))
+
+	// question: do we want to add validator in the keyring?
+	err := gen.AddValidator(genesis.Validator{
+		KeyringAccount: genesis.KeyringAccount{
+			Name:          "validator1",
+			InitialTokens: 1_000_000_000,
+		},
+		Stake:        1_000_000,
+		ConsensusKey: consensusKey,
+		NetworkKey:   networkKey,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	genDoc, err := gen.Export()
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// initialise test app against genesis
+	_ = testApp.Info(abci.RequestInfo{})
+
+	abciParams := &abci.ConsensusParams{
+		Block: &abci.BlockParams{
+			// choose some value large enough to not bottleneck the max square
+			// size
+			MaxBytes: int64(appconsts.DefaultSquareSizeUpperBound*appconsts.DefaultSquareSizeUpperBound) * appconsts.ContinuationSparseShareContentSize,
+			MaxGas:   cparams.Block.MaxGas,
+		},
+		Evidence:  &cparams.Evidence,
+		Validator: &cparams.Validator,
+		Version:   &cparams.Version,
+	}
+
+	// init chain will set the validator set and initialize the genesis accounts
+	fmt.Println(genDoc.GenesisTime, "GENDOC APP STATE")
+	// COMPARING PARAMS
+	fmt.Println(gen.GenesisTime, "GENESIS TIME")
+	fmt.Println(genDoc.ChainID, "CHAIN ID")
+	// fmt.Println(genDoc.AppState, "APP STATE")
+
+
+	// TODO Understand why genDoc.GenesisTime is getting reset
+	testApp.InitChain(
+		abci.RequestInitChain{
+			Time:            gen.GenesisTime,
+			Validators:      []abci.ValidatorUpdate{},
+			ConsensusParams: abciParams,
+			AppStateBytes:   genDoc.AppState,
+			ChainId:         genDoc.ChainID,
+		},
+	)
+
+	// commit genesis changes
+	testApp.Commit()
+	testApp.BeginBlock(abci.RequestBeginBlock{Header: tmproto.Header{
+		ChainID:            ChainID,
+		Height:             testApp.LastBlockHeight() + 1,
+		AppHash:            testApp.LastCommitID().Hash,
+		ValidatorsHash:     genDoc.ValidatorHash(),
+		NextValidatorsHash: genDoc.ValidatorHash(),
+		Version: tmversion.Consensus{
+			App: cparams.Version.AppVersion,
+		},
+	}})
+
+	return gen.Keyring(), gen.Accounts(), nil
 }
 
 // SetupTestAppWithGenesisValSet initializes a new app with a validator set and
