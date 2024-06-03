@@ -5,49 +5,50 @@ import (
 	"github.com/celestiaorg/celestia-app/app"
 	"github.com/celestiaorg/celestia-app/app/encoding"
 	"github.com/celestiaorg/celestia-app/pkg/appconsts"
+	appns "github.com/celestiaorg/celestia-app/pkg/namespace"
 	testutil "github.com/celestiaorg/celestia-app/test/util"
 	"github.com/celestiaorg/celestia-app/test/util/blobfactory"
 	"github.com/celestiaorg/celestia-app/test/util/testfactory"
-	blob "github.com/celestiaorg/celestia-app/x/blob/types"
-	appns "github.com/celestiaorg/celestia-app/pkg/namespace"
 	"github.com/cosmos/cosmos-sdk/codec"
 	hd "github.com/cosmos/cosmos-sdk/crypto/hd"
 	keyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"testing"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	coretypes "github.com/tendermint/tendermint/types"
+	"testing"
 )
 
 func TestNonDeterminismBetweenAppVersions(t *testing.T) {
-	// set up testapp with genesis state
 	const (
 		numBlobTxs, numNormalTxs = 5, 5
 	)
 
+	// Set up testapp with genesis state
 	testApp := testutil.NewTestApp()
 
 	enc := encoding.MakeConfig(app.ModuleEncodingRegisters...)
 	kr, pubKeys := DeterministicKeyRing(enc.Codec)
 
 	var addresses []string
-	krss, _ := kr.List()
-	// this is for getting names of accounts
-	for _, account := range krss {
+	recs, _ := kr.List()
+	// Get name of record for the accounts
+	for _, account := range recs {
 		addresses = append(addresses, account.Name)
 	}
 
-	_, _, err := testutil.ApplyGenesisState(testApp, pubKeys, 1_000_000_000, app.DefaultConsensusParams())
+	// Apply the desired genesis state
+	_, _, err := testutil.ApplyGenesisState(testApp, pubKeys, 1_000_000_000, app.DefaultInitialConsensusParams())
 	require.NoError(t, err)
 
 	accinfos := queryAccountInfo(testApp, addresses, kr)
 
-	// create deterministic set of 10 transactions
+	// Create 5 deterministic sdk txs
 	normalTxs := testutil.SendTxsWithAccounts(
 		t,
 		testApp,
-		enc.TxConfig.TxEncoder(),
+		enc.TxConfig,
 		kr,
 		1000,
 		addresses[0],
@@ -55,21 +56,18 @@ func TestNonDeterminismBetweenAppVersions(t *testing.T) {
 		testutil.ChainID,
 	)
 
-	b, err := blob.NewBlob(HardcodedNamespace(), []byte{1}, appconsts.DefaultShareVersion)
-	require.NoError(t, err)
-
-	// maybe change this to signer.CreatePFBS
-	blobTxs := blobfactory.ManyMultiBlobTx(t, enc.TxConfig.TxEncoder(), kr, testutil.ChainID, addresses[numBlobTxs+1:], accinfos[numBlobTxs+1:], testfactory.Repeat([]*blob.Blob{
-		b,
+	// Create 5 deterministic blob txs
+	blobTxs := blobfactory.ManyMultiBlobTx(t, enc.TxConfig, kr, testutil.ChainID, addresses[numBlobTxs+1:], accinfos[numBlobTxs+1:], testfactory.Repeat([]*tmproto.Blob{
+		New(HardcodedNamespace(), []byte{1}, appconsts.DefaultShareVersion),
 	}, numBlobTxs))
 
-	// deliver normal txs
+	// Deliver sdk txs
 	for _, tx := range normalTxs {
 		resp := testApp.DeliverTx(abci.RequestDeliverTx{Tx: tx})
 		require.EqualValues(t, 0, resp.Code, resp.Log)
 	}
 
-	// deliver blob txs
+	// Deliver blob txs
 	for _, tx := range blobTxs {
 		blobTx, ok := coretypes.UnmarshalBlobTx(tx)
 		require.True(t, ok)
@@ -80,9 +78,8 @@ func TestNonDeterminismBetweenAppVersions(t *testing.T) {
 	// Commit the state
 	testApp.Commit()
 
-	// // Get the app hash
+	// Get the app hash
 	appHash := testApp.LastCommitID().Hash
-
 	fmt.Println("AppHash:", appHash)
 }
 
@@ -121,4 +118,14 @@ func DeterministicKeyRing(cdc codec.Codec) (keyring.Keyring, []types.PubKey) {
 		pubKeys[idx] = pubKey
 	}
 	return kb, pubKeys
+}
+
+// New creates a new tmproto.Blob from the provided data
+func New(ns appns.Namespace, blob []byte, shareVersion uint8) *tmproto.Blob {
+	return &tmproto.Blob{
+		NamespaceId:      ns.ID,
+		Data:             blob,
+		ShareVersion:     uint32(shareVersion),
+		NamespaceVersion: uint32(ns.Version),
+	}
 }

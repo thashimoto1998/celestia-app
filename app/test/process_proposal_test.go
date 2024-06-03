@@ -33,7 +33,7 @@ func TestProcessProposal(t *testing.T) {
 	infos := queryAccountInfo(testApp, accounts, kr)
 	signer := types.GenerateKeyringSigner(t, accounts[0])
 
-	enc := encConf.TxConfig.TxEncoder()
+	enc := encConf.TxConfig
 
 	// create 4 single blob blobTxs that are signed with valid account numbers
 	// and sequences
@@ -65,11 +65,11 @@ func TestProcessProposal(t *testing.T) {
 	// create an invalid block by adding an otherwise valid PFB, but an invalid
 	// signature since there's no account
 	badSigBlobTx := testutil.RandBlobTxsWithManualSequence(
-		t, enc, kr, 1000, 1, false, testutil.ChainID, accounts[:1], 1, 1, true,
+		t, enc.TxEncoder(), kr, 1000, 1, false, testutil.ChainID, accounts[:1], 1, 1, true,
 	)[0]
 
 	blobTxWithInvalidNonce := testutil.RandBlobTxsWithManualSequence(
-		t, enc, kr, 1000, 1, false, testutil.ChainID, accounts[:1], 1, 3, false,
+		t, enc.TxEncoder(), kr, 1000, 1, false, testutil.ChainID, accounts[:1], 1, 3, false,
 	)[0]
 
 	ns1 := appns.MustNewV0(bytes.Repeat([]byte{1}, appns.NamespaceVersionZeroIDSize))

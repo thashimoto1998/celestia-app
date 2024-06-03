@@ -7,8 +7,10 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/celestiaorg/celestia-app/app"
+	"github.com/celestiaorg/celestia-app/pkg/user"
 	"github.com/celestiaorg/celestia-app/test/util/blobfactory"
 	blobtypes "github.com/celestiaorg/celestia-app/x/blob/types"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
@@ -17,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	coretypes "github.com/tendermint/tendermint/types"
+	"github.com/celestiaorg/celestia-app/pkg/appconsts"
 )
 
 // RandBlobTxsWithAccounts will create random blob transactions using the
@@ -197,24 +200,15 @@ func RandBlobTxsWithManualSequence(
 func SendTxsWithAccounts(
 	t *testing.T,
 	capp *app.App,
-	enc sdk.TxEncoder,
+	enc client.TxConfig,
 	kr keyring.Keyring,
 	amount uint64,
 	toAccount string,
 	accounts []string,
 	chainid string,
-	extraOpts ...blobtypes.TxBuilderOption,
+	extraOpts ...user.TxOption,
 ) []coretypes.Tx {
-	coin := sdk.Coin{
-		Denom:  app.BondDenom,
-		Amount: sdk.NewInt(10),
-	}
-
-	opts := []blobtypes.TxBuilderOption{
-		blobtypes.SetFeeAmount(sdk.NewCoins(coin)),
-		blobtypes.SetGasLimit(1000000),
-	}
-	opts = append(opts, extraOpts...)
+	opts := append(blobfactory.DefaultTxOpts(), extraOpts...)
 
 	txs := make([]coretypes.Tx, len(accounts))
 	for i := 0; i < len(accounts); i++ {
@@ -222,6 +216,9 @@ func SendTxsWithAccounts(
 
 		// update the account info in the signer so the signature is valid
 		acc := DirectQueryAccount(capp, signingAddr)
+		if acc == nil {
+			t.Fatalf("account %s not found", signingAddr)
+		}
 
 		txs[i] = SendTxWithManualSequence(
 			t,
@@ -244,27 +241,20 @@ func SendTxsWithAccounts(
 // account info must be provided.
 func SendTxWithManualSequence(
 	t *testing.T,
-	_ sdk.TxEncoder,
+	cfg client.TxConfig,
 	kr keyring.Keyring,
 	fromAcc, toAcc string,
 	amount uint64,
 	chainid string,
 	sequence, accountNum uint64,
-	opts ...blobtypes.TxBuilderOption,
+	opts ...user.TxOption,
 ) coretypes.Tx {
-	signer := blobtypes.NewKeyringSigner(kr, fromAcc, chainid)
-
-	signer.SetAccountNumber(accountNum)
-	signer.SetSequence(sequence)
-
 	fromAddr, toAddr := getAddress(fromAcc, kr), getAddress(toAcc, kr)
-
-	msg := banktypes.NewMsgSend(fromAddr, toAddr, sdk.NewCoins(sdk.NewCoin(app.BondDenom, sdk.NewIntFromUint64(amount))))
-
-	stx, err := signer.BuildSignedTx(signer.NewTxBuilder(opts...), msg)
+	signer, err := user.NewTxSigner(kr, cfg, chainid, appconsts.LatestVersion, user.NewAccount(fromAcc, accountNum, sequence))
 	require.NoError(t, err)
 
-	rawTx, err := signer.EncodeTx(stx)
+	msg := banktypes.NewMsgSend(fromAddr, toAddr, sdk.NewCoins(sdk.NewCoin(app.BondDenom, sdk.NewIntFromUint64(amount))))
+	rawTx, err := signer.CreateTx([]sdk.Msg{msg}, opts...)
 	require.NoError(t, err)
 
 	return rawTx

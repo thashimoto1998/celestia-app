@@ -220,10 +220,6 @@ func (g *Genesis) Export() (*coretypes.GenesisDoc, error) {
 		gentxs = append(gentxs, json.RawMessage(bz))
 	}
 
-	fmt.Println(g.ecfg, "ECFG")
-	fmt.Println(g.ConsensusParams, "CONSENSUS PARAMS")
-	fmt.Println(g.genOps, "GENOPS")
-
 	return Document(
 		g.ecfg,
 		g.ConsensusParams,

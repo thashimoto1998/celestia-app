@@ -11,8 +11,10 @@ import (
 	_ "github.com/celestiaorg/celestia-app/app"
 	"github.com/celestiaorg/celestia-app/pkg/appconsts"
 	appns "github.com/celestiaorg/celestia-app/pkg/namespace"
+	"github.com/celestiaorg/celestia-app/pkg/user"
 	"github.com/celestiaorg/celestia-app/test/util/testfactory"
 	blobtypes "github.com/celestiaorg/celestia-app/x/blob/types"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
@@ -30,6 +32,18 @@ var (
 	// TestMaxBlobCount is the maximum number of blobs in a blob transaction, for testing purposes
 	TestMaxBlobCount = 5
 )
+
+func DefaultTxOpts() []user.TxOption {
+	return FeeTxOpts(10_000_000)
+}
+
+func FeeTxOpts(gas uint64) []user.TxOption {
+	fee := uint64(float64(gas)*appconsts.DefaultMinGasPrice) + 1
+	return []user.TxOption{
+		user.SetFee(fee),
+		user.SetGasLimit(gas),
+	}
+}
 
 func RandMsgPayForBlobsWithSigner(rand *tmrand.Rand, singer string, size, blobCount int) (*blobtypes.MsgPayForBlobs, []*tmproto.Blob) {
 	blobs := make([]*tmproto.Blob, blobCount)
@@ -335,17 +349,21 @@ func NestedBlobs(t *testing.T, namespaces []appns.Namespace, sizes [][]int) [][]
 
 func ManyMultiBlobTx(
 	t *testing.T,
-	enc sdk.TxEncoder,
+	enc client.TxConfig,
 	kr keyring.Keyring,
 	chainid string,
 	accounts []string,
 	accInfos []AccountInfo,
 	blobs [][]*tmproto.Blob,
 ) [][]byte {
+	t.Helper()
 	txs := make([][]byte, len(accounts))
+	opts := DefaultTxOpts()
 	for i, acc := range accounts {
-		signer := blobtypes.NewKeyringSigner(kr, acc, chainid)
-		txs[i] = MultiBlobTx(t, enc, signer, accInfos[i].Sequence, accInfos[i].AccountNum, blobs[i]...)
+		signer, err := user.NewTxSigner(kr, enc, chainid, appconsts.LatestVersion, user.NewAccount(acc, accInfos[i].AccountNum, accInfos[i].Sequence))
+		require.NoError(t, err)
+		txs[i], _, err = signer.CreatePayForBlobs(acc, blobs[i], opts...)
+		require.NoError(t, err)
 	}
 	return txs
 }

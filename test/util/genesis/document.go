@@ -38,8 +38,6 @@ func Document(
 	if err != nil {
 		return nil, fmt.Errorf("packing accounts: %w", err)
 	}
-	// TODO these are different come back to this 
-	// fmt.Println(sdkAccounts, "sdkAccounts")
 
 	authGenState := authtypes.DefaultGenesisState()
 	bankGenState := banktypes.DefaultGenesisState()
@@ -59,7 +57,6 @@ func Document(
 	}
 
 	state := app.ModuleBasics.DefaultGenesis(ecfg.Codec)
-	// fmt.Println(state, "state")
 
 	state[authtypes.ModuleName] = ecfg.Codec.MustMarshalJSON(authGenState)
 	state[banktypes.ModuleName] = ecfg.Codec.MustMarshalJSON(bankGenState)

@@ -108,13 +108,12 @@ func TestPrepareProposalConsistency(t *testing.T) {
 					sendTxs := testutil.SendTxsWithAccounts(
 						t,
 						testApp,
-						encConf.TxConfig.TxEncoder(),
+						encConf.TxConfig,
 						kr,
 						1000,
 						accounts[0],
 						accounts[len(accounts)-100:],
 						testutil.ChainID,
-						blobtypes.SetGasLimit(1_000_000_000),
 					)
 					txs = append(txs, sendTxs...)
 
