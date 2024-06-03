@@ -7,6 +7,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/celestiaorg/celestia-app/app"
+	"github.com/celestiaorg/celestia-app/pkg/appconsts"
 	"github.com/celestiaorg/celestia-app/pkg/user"
 	"github.com/celestiaorg/celestia-app/test/util/blobfactory"
 	blobtypes "github.com/celestiaorg/celestia-app/x/blob/types"
@@ -19,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	coretypes "github.com/tendermint/tendermint/types"
-	"github.com/celestiaorg/celestia-app/pkg/appconsts"
 )
 
 // RandBlobTxsWithAccounts will create random blob transactions using the

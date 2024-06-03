@@ -2,6 +2,8 @@ package app_test
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/celestiaorg/celestia-app/app"
 	"github.com/celestiaorg/celestia-app/app/encoding"
 	"github.com/celestiaorg/celestia-app/pkg/appconsts"
@@ -17,7 +19,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	coretypes "github.com/tendermint/tendermint/types"
-	"testing"
 )
 
 func TestNonDeterminismBetweenAppVersions(t *testing.T) {
@@ -31,11 +32,11 @@ func TestNonDeterminismBetweenAppVersions(t *testing.T) {
 	enc := encoding.MakeConfig(app.ModuleEncodingRegisters...)
 	kr, pubKeys := DeterministicKeyRing(enc.Codec)
 
-	var addresses []string
 	recs, _ := kr.List()
+	addresses := make([]string, 0, len(recs))
 	// Get name of record for the accounts
-	for _, account := range recs {
-		addresses = append(addresses, account.Name)
+	for _, rec := range recs {
+		addresses = append(addresses, rec.Name)
 	}
 
 	// Apply the desired genesis state

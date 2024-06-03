@@ -123,7 +123,7 @@ func generateBlobTxsWithNamespaces(t *testing.T, namespaces []ns.Namespace, blob
 	kr := testfactory.GenerateKeyring(acc)
 	return blobfactory.ManyMultiBlobTx(
 		t,
-		encCfg.TxConfig.TxEncoder(),
+		encCfg.TxConfig,
 		kr,
 		"chainid",
 		blobfactory.Repeat(acc, len(blobSizes)),
