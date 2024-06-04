@@ -24,10 +24,7 @@ import (
 	"github.com/celestiaorg/celestia-app/pkg/da"
 	appns "github.com/celestiaorg/celestia-app/pkg/namespace"
 	"github.com/celestiaorg/celestia-app/pkg/square"
-	"github.com/celestiaorg/celestia-app/x/blob"
 	blobtypes "github.com/celestiaorg/celestia-app/x/blob/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -205,78 +202,6 @@ func (s *IntegrationTestSuite) TestMaxBlockSize() {
 	}
 }
 
-func (s *IntegrationTestSuite) TestSubmitPayForBlob() {
-	t := s.T()
-	ns1 := appns.MustNewV0(bytes.Repeat([]byte{1}, appns.NamespaceVersionZeroIDSize))
-
-	mustNewBlob := func(ns appns.Namespace, data []byte, shareVersion uint8) *blobtypes.Blob {
-		b, err := blobtypes.NewBlob(ns, data, shareVersion)
-		require.NoError(t, err)
-		return b
-	}
-
-	type test struct {
-		name string
-		blob *blobtypes.Blob
-		opts []blobtypes.TxBuilderOption
-	}
-
-	tests := []test{
-		{
-			"small random typical",
-			mustNewBlob(ns1, tmrand.Bytes(3000), appconsts.ShareVersionZero),
-			[]blobtypes.TxBuilderOption{
-				blobtypes.SetFeeAmount(sdk.NewCoins(sdk.NewCoin(app.BondDenom, sdk.NewInt(1)))),
-				blobtypes.SetGasLimit(1_000_000_000),
-			},
-		},
-		{
-			"large random typical",
-			mustNewBlob(ns1, tmrand.Bytes(350000), appconsts.ShareVersionZero),
-			[]blobtypes.TxBuilderOption{
-				blobtypes.SetFeeAmount(sdk.NewCoins(sdk.NewCoin(app.BondDenom, sdk.NewInt(10)))),
-				blobtypes.SetGasLimit(1_000_000_000),
-			},
-		},
-		{
-			"medium random with memo",
-			mustNewBlob(ns1, tmrand.Bytes(100000), appconsts.ShareVersionZero),
-			[]blobtypes.TxBuilderOption{
-				blobtypes.SetMemo("lol I could stick the rollup block here if I wanted to"),
-				blobtypes.SetGasLimit(1_000_000_000),
-			},
-		},
-		{
-			"medium random with timeout height",
-			mustNewBlob(ns1, tmrand.Bytes(100000), appconsts.ShareVersionZero),
-			[]blobtypes.TxBuilderOption{
-				blobtypes.SetTimeoutHeight(1000),
-				blobtypes.SetGasLimit(1_000_000_000),
-			},
-		},
-	}
-	for _, tc := range tests {
-		s.Run(tc.name, func() {
-			// occasionally this test will error that the mempool is full (code
-			// 20) so we wait a few blocks for the txs to clear
-			require.NoError(t, s.cctx.WaitForBlocks(3))
-
-			signer := blobtypes.NewKeyringSigner(s.cctx.Keyring, s.accounts[141], s.cctx.ChainID)
-			res, err := blob.SubmitPayForBlob(
-				context.TODO(),
-				signer,
-				s.cctx.GRPCClient,
-				sdktx.BroadcastMode_BROADCAST_MODE_BLOCK,
-				[]*blobtypes.Blob{tc.blob, tc.blob},
-				tc.opts...,
-			)
-			require.NoError(t, err)
-			require.NotNil(t, res)
-			require.Equal(t, abci.CodeTypeOK, res.Code, res.Logs)
-		})
-	}
-}
-
 func (s *IntegrationTestSuite) TestUnwrappedPFBRejection() {
 	t := s.T()
 
@@ -384,66 +309,7 @@ func (s *IntegrationTestSuite) TestEmptyBlock() {
 	}
 }
 
-// TestSubmitPayForBlob_blobSizes verifies the tx response ABCI code when
-// SubmitPayForBlob is invoked with different blob sizes.
-func (s *IntegrationTestSuite) TestSubmitPayForBlob_blobSizes() {
-	t := s.T()
-	require.NoError(t, s.cctx.WaitForBlocks(3))
-
-	type testCase struct {
-		name string
-		blob *tmproto.Blob
-		// txResponseCode is the expected tx response ABCI code.
-		txResponseCode uint32
-	}
-	testCases := []testCase{
-		{
-			name:           "1,000 byte blob",
-			blob:           mustNewBlob(t, 1_000),
-			txResponseCode: abci.CodeTypeOK,
-		},
-		{
-			name:           "10,000 byte blob",
-			blob:           mustNewBlob(t, 10_000),
-			txResponseCode: abci.CodeTypeOK,
-		},
-		{
-			name:           "100,000 byte blob",
-			blob:           mustNewBlob(t, 100_000),
-			txResponseCode: abci.CodeTypeOK,
-		},
-		{
-			name:           "1,000,000 byte blob",
-			blob:           mustNewBlob(t, 1_000_000),
-			txResponseCode: abci.CodeTypeOK,
-		},
-		{
-			name:           "10,000,000 byte blob returns err tx too large",
-			blob:           mustNewBlob(t, 10_000_000),
-			txResponseCode: errors.ErrTxTooLarge.ABCICode(),
-		},
-	}
-
-	for _, tc := range testCases {
-		s.Run(tc.name, func() {
-			signer := blobtypes.NewKeyringSigner(s.cctx.Keyring, s.accounts[141], s.cctx.ChainID)
-			options := []blobtypes.TxBuilderOption{blobtypes.SetGasLimit(1_000_000_000)}
-			res, err := blob.SubmitPayForBlob(
-				context.TODO(),
-				signer,
-				s.cctx.GRPCClient,
-				sdktx.BroadcastMode_BROADCAST_MODE_BLOCK,
-				[]*blobtypes.Blob{tc.blob},
-				options...,
-			)
-
-			require.NoError(t, err)
-			require.NotNil(t, res)
-			require.Equal(t, tc.txResponseCode, res.Code, res.Logs)
-		})
-	}
-}
-
+// TestSubmitPayForBlob_blobSizes verifies the tx respons
 func mustNewBlob(t *testing.T, blobSize int) *tmproto.Blob {
 	ns1 := appns.MustNewV0(bytes.Repeat([]byte{1}, appns.NamespaceVersionZeroIDSize))
 	data := tmrand.Bytes(blobSize)
