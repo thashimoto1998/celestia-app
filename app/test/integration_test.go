@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/stretchr/testify/suite"
 
@@ -309,7 +308,6 @@ func (s *IntegrationTestSuite) TestEmptyBlock() {
 	}
 }
 
-// TestSubmitPayForBlob_blobSizes verifies the tx respons
 func mustNewBlob(t *testing.T, blobSize int) *tmproto.Blob {
 	ns1 := appns.MustNewV0(bytes.Repeat([]byte{1}, appns.NamespaceVersionZeroIDSize))
 	data := tmrand.Bytes(blobSize)
