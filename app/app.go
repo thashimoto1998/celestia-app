@@ -439,6 +439,11 @@ func New(
 		qgbmod,
 	)
 
+	app.mm.SetOrderExportGenesis(
+		banktypes.ModuleName,
+		stakingtypes.ModuleName,
+	)
+
 	// During begin block slashing happens after distr.BeginBlocker so that
 	// there is nothing left over in the validator fee pool, so as to keep the
 	// CanWithdrawInvariant invariant.
